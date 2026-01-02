@@ -25,3 +25,8 @@ sentence_segmentation = "1.2.0"
 rodio = "0.20.1"
 ctrlc = "3.4.1"
 regex = "1.10.3"
+
+[features]
+default = []
+cuda = ["kokorox/cuda"]
+coreml = ["kokorox/coreml"]
