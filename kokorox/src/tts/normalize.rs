@@ -39,6 +39,300 @@ pub fn expand_decimal_for_tts(num_str: &str, language: &str) -> String {
     expand_decimal(num_str, language)
 }
 
+/// Strip common markdown/markup formatting while preserving readable text.
+pub fn strip_markup(text: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+
+    let bytes = text.as_bytes();
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0usize;
+    let len = bytes.len();
+    let mut line_start = true;
+    let mut in_code_block = false;
+    let mut code_fence_char = b'`';
+    let mut inline_tick_len = 0usize;
+    let mut prev_char: Option<char> = None;
+
+    while i < len {
+        if in_code_block {
+            if line_start {
+                let mut j = i;
+                while j < len && (bytes[j] == b' ' || bytes[j] == b'\t') {
+                    j += 1;
+                }
+                if j < len && bytes[j] == code_fence_char {
+                    let mut k = j;
+                    while k < len && bytes[k] == code_fence_char {
+                        k += 1;
+                    }
+                    if k - j >= 3 {
+                        i = k;
+                        while i < len && bytes[i] != b'\n' {
+                            i += 1;
+                        }
+                        if i < len {
+                            out.push('\n');
+                            prev_char = Some('\n');
+                            i += 1;
+                        }
+                        in_code_block = false;
+                        line_start = true;
+                        continue;
+                    }
+                }
+            }
+
+            let ch = text[i..].chars().next().unwrap();
+            out.push(ch);
+            prev_char = Some(ch);
+            i += ch.len_utf8();
+            line_start = ch == '\n';
+            continue;
+        }
+
+        if inline_tick_len > 0 {
+            if bytes[i] == b'`' {
+                let mut j = i;
+                while j < len && bytes[j] == b'`' {
+                    j += 1;
+                }
+                if j - i >= inline_tick_len {
+                    i = j;
+                    inline_tick_len = 0;
+                    continue;
+                }
+            }
+            let ch = text[i..].chars().next().unwrap();
+            out.push(ch);
+            prev_char = Some(ch);
+            i += ch.len_utf8();
+            line_start = ch == '\n';
+            continue;
+        }
+
+        if line_start {
+            let mut j = i;
+            while j < len && (bytes[j] == b' ' || bytes[j] == b'\t') {
+                j += 1;
+            }
+            if j < len && (bytes[j] == b'`' || bytes[j] == b'~') {
+                let fence = bytes[j];
+                let mut k = j;
+                while k < len && bytes[k] == fence {
+                    k += 1;
+                }
+                if k - j >= 3 {
+                    i = k;
+                    while i < len && bytes[i] != b'\n' {
+                        i += 1;
+                    }
+                    if i < len {
+                        out.push('\n');
+                        prev_char = Some('\n');
+                        i += 1;
+                    }
+                    in_code_block = true;
+                    code_fence_char = fence;
+                    line_start = true;
+                    continue;
+                }
+            }
+
+            if j < len && bytes[j] == b'#' {
+                let mut k = j;
+                while k < len && bytes[k] == b'#' {
+                    k += 1;
+                }
+                if k < len && bytes[k] == b' ' {
+                    i = k + 1;
+                    line_start = false;
+                    continue;
+                }
+            }
+
+            if j < len && bytes[j] == b'>' {
+                let mut k = j + 1;
+                if k < len && bytes[k] == b' ' {
+                    k += 1;
+                }
+                i = k;
+                line_start = false;
+                continue;
+            }
+
+            if j < len && (bytes[j] == b'-' || bytes[j] == b'*' || bytes[j] == b'+') {
+                let k = j + 1;
+                if k < len && bytes[k] == b' ' {
+                    i = k + 1;
+                    line_start = false;
+                    continue;
+                }
+            }
+
+            if j < len && bytes[j].is_ascii_digit() {
+                let mut k = j;
+                while k < len && bytes[k].is_ascii_digit() {
+                    k += 1;
+                }
+                if k < len && (bytes[k] == b'.' || bytes[k] == b')') {
+                    let m = k + 1;
+                    if m < len && bytes[m] == b' ' {
+                        i = m + 1;
+                        line_start = false;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        if bytes[i] == b'`' {
+            let mut j = i;
+            while j < len && bytes[j] == b'`' {
+                j += 1;
+            }
+            inline_tick_len = j - i;
+            i = j;
+            continue;
+        }
+
+        if bytes[i] == b'!' && i + 1 < len && bytes[i + 1] == b'[' {
+            if let Some((new_i, last_char)) = strip_link_like(text, i + 2, &mut out) {
+                i = new_i;
+                line_start = false;
+                if let Some(ch) = last_char {
+                    prev_char = Some(ch);
+                }
+                continue;
+            }
+        } else if bytes[i] == b'[' {
+            if let Some((new_i, last_char)) = strip_link_like(text, i + 1, &mut out) {
+                i = new_i;
+                line_start = false;
+                if let Some(ch) = last_char {
+                    prev_char = Some(ch);
+                }
+                continue;
+            }
+        }
+
+        if bytes[i] == b'<' {
+            if let Some(close) = text[i + 1..].find('>') {
+                let end = i + 1 + close;
+                let inside = text[i + 1..end].trim();
+                let is_autolink = inside.starts_with("http://")
+                    || inside.starts_with("https://")
+                    || inside.starts_with("mailto:")
+                    || inside.starts_with("www.");
+                let looks_like_tag = !inside.is_empty()
+                    && (inside.starts_with('/')
+                        || inside.starts_with('!')
+                        || inside.starts_with('?')
+                        || inside.chars().next().unwrap().is_alphabetic());
+                if is_autolink {
+                    out.push_str(inside);
+                    prev_char = inside.chars().last();
+                    i = end + 1;
+                    line_start = false;
+                    continue;
+                }
+                if looks_like_tag {
+                    i = end + 1;
+                    line_start = false;
+                    continue;
+                }
+            }
+        }
+
+        if bytes[i] == b'*' || bytes[i] == b'_' || bytes[i] == b'~' {
+            let marker = bytes[i];
+            let mut j = i;
+            while j < len && bytes[j] == marker {
+                j += 1;
+            }
+            let run_len = j - i;
+            let next_char = text[j..].chars().next();
+            let prev = prev_char.unwrap_or(' ');
+            let prev_is_word = prev.is_alphanumeric();
+            let next_is_word = next_char.map(|c| c.is_alphanumeric()).unwrap_or(false);
+
+            if marker == b'~' && run_len >= 2 {
+                i = j;
+                continue;
+            }
+
+            if (marker == b'*' || marker == b'_') && run_len >= 2 {
+                i = j;
+                continue;
+            }
+
+            if (marker == b'*' || marker == b'_')
+                && ((prev_is_word && !next_is_word) || (!prev_is_word && next_is_word))
+            {
+                i += 1;
+                continue;
+            }
+        }
+
+        let ch = text[i..].chars().next().unwrap();
+        out.push(ch);
+        prev_char = Some(ch);
+        i += ch.len_utf8();
+        line_start = ch == '\n';
+    }
+
+    out
+}
+
+fn strip_link_like(text: &str, start: usize, out: &mut String) -> Option<(usize, Option<char>)> {
+    let bytes = text.as_bytes();
+    let len = bytes.len();
+    let mut i = start;
+
+    while i < len {
+        if bytes[i] == b']' {
+            let label = &text[start..i];
+            let last_char = label.chars().last();
+            let mut j = i + 1;
+            if j < len && bytes[j] == b'(' {
+                j += 1;
+                let mut depth = 1usize;
+                while j < len {
+                    if bytes[j] == b'(' {
+                        depth += 1;
+                    } else if bytes[j] == b')' {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    j += 1;
+                }
+                if j < len {
+                    out.push_str(label);
+                    return Some((j + 1, last_char));
+                }
+            } else if j < len && bytes[j] == b'[' {
+                j += 1;
+                while j < len && bytes[j] != b']' {
+                    j += 1;
+                }
+                if j < len {
+                    out.push_str(label);
+                    return Some((j + 1, last_char));
+                }
+            }
+
+            out.push_str(label);
+            return Some((i + 1, last_char));
+        }
+        i += 1;
+    }
+
+    None
+}
+
 /// Language-aware function to expand numbers into words
 fn expand_number(num_str: &str, language: &str) -> String {
     // If not one of the languages we have explicit support for, 
@@ -862,4 +1156,44 @@ pub fn normalize_text(text: &str, language: &str) -> String {
     }
     
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_markup;
+
+    #[test]
+    fn strips_headers_and_emphasis() {
+        let input = "# Title\nThis is **bold** and *italic* text.";
+        let expected = "Title\nThis is bold and italic text.";
+        assert_eq!(strip_markup(input), expected);
+    }
+
+    #[test]
+    fn strips_links_and_images() {
+        let input = "See [Rust](https://rust-lang.org) and ![logo](logo.png).";
+        let expected = "See Rust and logo.";
+        assert_eq!(strip_markup(input), expected);
+    }
+
+    #[test]
+    fn strips_code_fences_and_inline_code() {
+        let input = "Here is `code`:\n```\nfn main() {}\n```\nDone.";
+        let expected = "Here is code:\n\nfn main() {}\n\nDone.";
+        assert_eq!(strip_markup(input), expected);
+    }
+
+    #[test]
+    fn strips_html_tags_and_autolinks() {
+        let input = "<b>bold</b> <https://example.com> <tag attr=\"x\">ok</tag>";
+        let expected = "bold https://example.com ok";
+        assert_eq!(strip_markup(input), expected);
+    }
+
+    #[test]
+    fn strips_blockquotes_and_lists() {
+        let input = "- item\n> quote\n1. first\n2) second";
+        let expected = "item\nquote\nfirst\nsecond";
+        assert_eq!(strip_markup(input), expected);
+    }
 }

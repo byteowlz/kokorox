@@ -559,24 +559,6 @@ impl Phonemizer {
     }
 
     pub fn phonemize(&self, text: &str, normalize: bool) -> String {
-        // Create a direct phonemization function that uses espeak-ng directly
-        fn direct_phonemize(input: &str, lang: &str, with_stress: bool) -> String {
-            // Call espeak-ng directly
-            match text_to_phonemes(input, lang, None, true, false) {
-                Ok(phonemes) => {
-                    // Join the phonemes into a single string
-                    let joined = phonemes.join("");
-                    println!("DIRECT PHONEMIZE: {} -> {}", input, joined);
-                    joined
-                }
-                Err(e) => {
-                    println!("ERROR in direct phonemize: {}", e);
-                    // Return empty string on error
-                    String::new()
-                }
-            }
-        }
-
         // Fix incomplete phrases by preprocessing the text
         // This addresses issues like "1939 to" directly at the phonemization level
         let preprocessed_text = {

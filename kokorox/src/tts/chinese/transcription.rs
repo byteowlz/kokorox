@@ -361,4 +361,11 @@ mod tests {
         assert!(result.contains("a"));
         assert!(result.contains("˥"));
     }
+
+    #[test]
+    fn test_retone_ipa() {
+        let input = "ma˧˩˧ ma˧˥ ma˥˩ ma˥";
+        let expected = "ma↓ ma↗ ma↘ ma→";
+        assert_eq!(retone_ipa(input), expected);
+    }
 }

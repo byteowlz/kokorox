@@ -745,6 +745,13 @@ impl TTSKoko {
         force_style: bool,
         phonemes: bool,
     ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        let cleaned_text = if phonemes {
+            None
+        } else {
+            Some(crate::tts::normalize::strip_markup(txt))
+        };
+        let text_for_tts = cleaned_text.as_deref().unwrap_or(txt);
+
         // Split input into appropriate chunks
         // In phonemes mode, avoid text-based sentence splitting to preserve
         // phoneme order and prevent cutting inside syllables.
@@ -752,7 +759,7 @@ impl TTSKoko {
             println!("PHONEMES MODE: Chunking by words with token budget");
             self.split_phonemes_into_chunks(txt, 500) // leave ~12 tokens margin
         } else {
-            self.split_text_into_chunks(txt, 500) // leave ~12 tokens margin
+            self.split_text_into_chunks(text_for_tts, 500) // leave ~12 tokens margin
         };
         let mut final_audio = Vec::new();
 
@@ -760,7 +767,7 @@ impl TTSKoko {
         let language = if auto_detect_language {
             // Only detect language when auto-detect flag is enabled
             println!("Attempting language detection for input text...");
-            if let Some(detected) = detect_language(txt) {
+            if let Some(detected) = detect_language(text_for_tts) {
                 println!("Detected language: {} (confidence is good)", detected);
                 detected
             } else {

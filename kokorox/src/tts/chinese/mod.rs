@@ -80,8 +80,6 @@ lazy_static! {
 pub struct ChineseG2P {
     /// Whether to use v1.1 frontend with Bopomofo output
     use_bopomofo: bool,
-    /// Unknown character replacement
-    unk: char,
 }
 
 impl Default for ChineseG2P {
@@ -95,7 +93,6 @@ impl ChineseG2P {
     pub fn new() -> Self {
         Self {
             use_bopomofo: true,
-            unk: '?',
         }
     }
     
@@ -103,7 +100,6 @@ impl ChineseG2P {
     pub fn with_ipa() -> Self {
         Self {
             use_bopomofo: false,
-            unk: '?',
         }
     }
     
