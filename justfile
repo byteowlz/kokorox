@@ -120,6 +120,7 @@ watch:
 fetch:
     rustup show active-toolchain
     cargo fetch
+    ./scripts/install.sh
 
 # Update dependencies
 update:
