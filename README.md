@@ -4,7 +4,7 @@ Rust implementation of the [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) t
 
 ## Features
 
-- Multi-language: English, Chinese, Japanese, Spanish, German, French, and more via espeak-ng
+- Multi-language: English, Chinese, Japanese, Spanish, French, and more via espeak-ng
 - Voice style mixing (e.g., `af_sky.4+af_nicole.5`)
 - OpenAI-compatible API server
 - Streaming and pipe modes for LLM integration
