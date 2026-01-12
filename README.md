@@ -145,4 +145,4 @@ koko -d data/voices-custom.bin text "Hello" --style en_sarah
 
 ## License
 
-Apache-2.0
+GPL 3.0 due to use of the espeak-rs-sys crate which statically links espeak-ng
