@@ -294,11 +294,6 @@ impl AppConfig {
         format!("{}/{}", expanded_dir, filename)
     }
 
-    /// Expand the output directory path (resolve ~, env vars, etc.)
-    pub fn expanded_output_dir(&self) -> String {
-        expand_path(&self.output_dir)
-    }
-
     /// Print the current configuration paths (useful for debugging)
     pub fn print_paths() {
         eprintln!("Configuration paths:");

@@ -19,7 +19,7 @@ use std::{
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 mod config;
-use config::{AppConfig, expand_path};
+use config::AppConfig;
 
 struct ChannelSource {
     rx: Receiver<Vec<f32>>,
@@ -340,7 +340,6 @@ struct ResolvedConfig {
     verbose: bool,
     debug_accents: bool,
     phonemes: bool,
-    output_dir: String,
     server_ip: String,
     server_openai_port: u16,
     server_websocket_port: u16,
@@ -367,7 +366,6 @@ impl ResolvedConfig {
             verbose: cli.verbose.unwrap_or(config.verbose),
             debug_accents: cli.debug_accents.unwrap_or(config.debug_accents),
             phonemes: cli.phonemes,
-            output_dir: expand_path(&config.output_dir),
             server_ip: config.server.ip.clone(),
             server_openai_port: config.server.openai_port,
             server_websocket_port: config.server.websocket_port,
@@ -375,18 +373,18 @@ impl ResolvedConfig {
     }
 
     /// Get the output path for text mode
-    fn text_output_path(&self, cli_path: &Option<String>) -> String {
-        cli_path.clone().unwrap_or_else(|| format!("{}/output.wav", self.output_dir))
+    fn text_output_path(&self, cli_path: &Option<String>, config: &AppConfig) -> String {
+        cli_path.clone().unwrap_or_else(|| config.output_path("output.wav"))
     }
 
     /// Get the output path format for file mode
-    fn file_output_path_format(&self, cli_path: &Option<String>) -> String {
-        cli_path.clone().unwrap_or_else(|| format!("{}/output_{{line}}.wav", self.output_dir))
+    fn file_output_path_format(&self, cli_path: &Option<String>, config: &AppConfig) -> String {
+        cli_path.clone().unwrap_or_else(|| config.output_path("output_{line}.wav"))
     }
 
     /// Get the output path for pipe mode
-    fn pipe_output_path(&self, cli_path: &Option<String>) -> String {
-        cli_path.clone().unwrap_or_else(|| format!("{}/pipe_output.wav", self.output_dir))
+    fn pipe_output_path(&self, cli_path: &Option<String>, config: &AppConfig) -> String {
+        cli_path.clone().unwrap_or_else(|| config.output_path("pipe_output.wav"))
     }
 
     /// Get the server IP address
@@ -969,7 +967,41 @@ fn ensure_parent_dir_exists(file_path: &str) -> io::Result<()> {
     Ok(())
 }
 
+/// Initialize espeak-ng data directory environment variable if not already set.
+/// This checks common system paths where espeak-ng-data may be installed on Linux.
+#[cfg(target_os = "linux")]
+fn init_espeak_data_dir() {
+    const ENV_VAR: &str = "PIPER_ESPEAKNG_DATA_DIRECTORY";
+    
+    // Skip if already set
+    if std::env::var(ENV_VAR).is_ok() {
+        return;
+    }
+    
+    // Common Linux system paths where espeak-ng-data is installed
+    let system_paths = [
+        "/usr/share",       // Most distros (Arch, Debian, Ubuntu, Fedora, etc.)
+        "/usr/local/share", // Local installations
+    ];
+    
+    for path in system_paths {
+        let data_dir = std::path::Path::new(path).join("espeak-ng-data");
+        if data_dir.exists() && data_dir.join("phontab").exists() {
+            std::env::set_var(ENV_VAR, path);
+            return;
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn init_espeak_data_dir() {
+    // No-op on non-Linux platforms
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize espeak-ng data directory before anything else
+    init_espeak_data_dir();
+    
     // The segmentation fault seems to be related to ONNX runtime cleanup
     // We'll use a different approach to clean up
 
@@ -1027,6 +1059,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             return Ok(());
+        }
+        
+        // Ensure XDG directories exist
+        if let Err(e) = AppConfig::ensure_dirs_exist() {
+            eprintln!("Warning: Failed to create XDG directories: {}", e);
         }
         
         // Load configuration (CLI args will override these)
@@ -1130,7 +1167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 save_path_format,
             } => {
                 // Use resolved config for output path if not specified on CLI
-                let output_format = resolved.file_output_path_format(save_path_format);
+                let output_format = resolved.file_output_path_format(save_path_format, &app_config);
                 ensure_parent_dir_exists(&output_format)?;
                 
                 let file_content = fs::read_to_string(input_path)?;
@@ -1158,7 +1195,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             Mode::Text { text, save_path } => {
                 // Use resolved config for output path if not specified on CLI
-                let output_path = resolved.text_output_path(save_path);
+                let output_path = resolved.text_output_path(save_path, &app_config);
                 ensure_parent_dir_exists(&output_path)?;
                 
                 let s = std::time::Instant::now();
@@ -1268,7 +1305,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Mode::Pipe { output_path: cli_output_path } => {
                 // Use resolved config for output path if not specified on CLI
-                let output_path = resolved.pipe_output_path(cli_output_path);
+                let output_path = resolved.pipe_output_path(cli_output_path, &app_config);
                 ensure_parent_dir_exists(&output_path)?;
                 
                 // Create an asynchronous reader for stdin.
@@ -1281,7 +1318,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Set up audio plumbing once; choose later whether to play it.
                 let (tx, rx) = std::sync::mpsc::channel::<Vec<f32>>();
-                let (maybe_stream, maybe_sink) = if silent {
+                // Note: _stream must be kept alive for audio playback to work (rodio requirement)
+                let (_stream, maybe_sink) = if silent {
                     (None, None)
                 } else {
                     let (stream, handle) = OutputStream::try_default()?;

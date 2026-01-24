@@ -78,7 +78,7 @@ lazy_static! {
         m.insert("vn", "yn");
         // Special finals for zh/ch/sh/r + i
         m.insert("ii", "ɻ̩");
-        // Special finals for z/c/s + i  
+        // Special finals for z/c/s + i
         m.insert("iii", "ɹ̩");
         m
     };
@@ -181,7 +181,7 @@ lazy_static! {
     /// List of valid initials
     static ref INITIALS: Vec<&'static str> = vec![
         "zh", "ch", "sh",  // Two-char initials first for matching
-        "b", "p", "m", "f", "d", "t", "n", "l", 
+        "b", "p", "m", "f", "d", "t", "n", "l",
         "g", "k", "h", "j", "q", "x", "r", "z", "c", "s",
         "y", "w"
     ];
@@ -190,23 +190,23 @@ lazy_static! {
 /// Parse a pinyin syllable into (initial, final, tone)
 fn parse_pinyin(pinyin: &str) -> (Option<&str>, String, u8) {
     let pinyin = pinyin.to_lowercase();
-    
+
     // Extract tone number from end
     let (base, tone) = if let Some(last) = pinyin.chars().last() {
         if last.is_ascii_digit() {
             let tone = last.to_digit(10).unwrap_or(5) as u8;
-            (&pinyin[..pinyin.len()-1], tone)
+            (&pinyin[..pinyin.len() - 1], tone)
         } else {
             (pinyin.as_str(), 5u8)
         }
     } else {
         return (None, String::new(), 5);
     };
-    
+
     // Find initial
     let mut initial: Option<&str> = None;
     let mut final_start = 0;
-    
+
     for init in INITIALS.iter() {
         if base.starts_with(init) {
             initial = Some(init);
@@ -214,9 +214,9 @@ fn parse_pinyin(pinyin: &str) -> (Option<&str>, String, u8) {
             break;
         }
     }
-    
+
     let final_part = &base[final_start..];
-    
+
     // Handle special cases for finals
     let final_part = match (initial, final_part) {
         // zi, ci, si -> use "ii" final
@@ -230,30 +230,31 @@ fn parse_pinyin(pinyin: &str) -> (Option<&str>, String, u8) {
         // un -> uen
         (_, "un") => "uen",
         // Handle u after j, q, x, y -> v
-        (Some("j"), f) | (Some("q"), f) | (Some("x"), f) | (Some("y"), f) 
-            if f.starts_with('u') && !f.starts_with("ua") && !f.starts_with("uo") => {
+        (Some("j"), f) | (Some("q"), f) | (Some("x"), f) | (Some("y"), f)
+            if f.starts_with('u') && !f.starts_with("ua") && !f.starts_with("uo") =>
+        {
             // Replace u with v
             &f.replacen('u', "v", 1).leak()
-        },
+        }
         _ => final_part,
     };
-    
+
     (initial, final_part.to_string(), tone)
 }
 
 /// Convert pinyin to IPA
 pub fn pinyin_to_ipa(pinyin: &str) -> String {
     let (initial, final_part, tone) = parse_pinyin(pinyin);
-    
+
     let mut result = String::new();
-    
+
     // Add initial IPA
     if let Some(init) = initial {
         if let Some(ipa) = INITIAL_TO_IPA.get(init) {
             result.push_str(ipa);
         }
     }
-    
+
     // Add final IPA
     if let Some(ipa) = FINAL_TO_IPA.get(final_part.as_str()) {
         result.push_str(ipa);
@@ -261,30 +262,31 @@ pub fn pinyin_to_ipa(pinyin: &str) -> String {
         // Fallback: try to build from parts
         result.push_str(&final_part);
     }
-    
+
     // Add tone marker
     if let Some(tone_marker) = TONE_TO_IPA.get(&tone) {
         result.push_str(tone_marker);
     }
-    
+
     result
 }
 
 /// Convert pinyin to Bopomofo (Zhuyin)
 pub fn pinyin_to_bopomofo(pinyin: &str) -> String {
     let (initial, final_part, tone) = parse_pinyin(pinyin);
-    
+
     let mut result = String::new();
-    
+
     // Add initial Bopomofo
     if let Some(init) = initial {
-        if init != "y" && init != "w" {  // y and w are not real initials in Bopomofo
+        if init != "y" && init != "w" {
+            // y and w are not real initials in Bopomofo
             if let Some(bpmf) = ZH_MAP.get(init) {
                 result.push_str(bpmf);
             }
         }
     }
-    
+
     // Add final Bopomofo
     if let Some(bpmf) = ZH_MAP.get(final_part.as_str()) {
         result.push_str(bpmf);
@@ -309,50 +311,42 @@ pub fn pinyin_to_bopomofo(pinyin: &str) -> String {
         };
         result.push_str(bpmf);
     }
-    
+
     // Add tone number
     result.push_str(&tone.to_string());
-    
-    result
-}
 
-/// Retone IPA output (convert tone markers to arrows for v1.1 compatibility)
-pub fn retone_ipa(ipa: &str) -> String {
-    ipa.replace("˧˩˧", "↓")   // third tone
-       .replace("˧˥", "↗")    // second tone  
-       .replace("˥˩", "↘")    // fourth tone
-       .replace("˥", "→")     // first tone
+    result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parse_pinyin() {
         let (init, fin, tone) = parse_pinyin("zhong1");
         assert_eq!(init, Some("zh"));
         assert_eq!(fin, "ong");
         assert_eq!(tone, 1);
-        
+
         let (init, fin, tone) = parse_pinyin("guo2");
         assert_eq!(init, Some("g"));
         assert_eq!(fin, "uo");
         assert_eq!(tone, 2);
     }
-    
+
     #[test]
     fn test_pinyin_to_bopomofo() {
         let result = pinyin_to_bopomofo("zhong1");
         println!("zhong1 -> {}", result);
         assert!(result.contains("ㄓ"));
         assert!(result.contains("中"));
-        
+
         let result = pinyin_to_bopomofo("ni3");
         println!("ni3 -> {}", result);
         assert!(result.contains("ㄋ"));
     }
-    
+
     #[test]
     fn test_pinyin_to_ipa() {
         let result = pinyin_to_ipa("ma1");
@@ -360,12 +354,5 @@ mod tests {
         assert!(result.contains("m"));
         assert!(result.contains("a"));
         assert!(result.contains("˥"));
-    }
-
-    #[test]
-    fn test_retone_ipa() {
-        let input = "ma˧˩˧ ma˧˥ ma˥˩ ma˥";
-        let expected = "ma↓ ma↗ ma↘ ma→";
-        assert_eq!(retone_ipa(input), expected);
     }
 }
