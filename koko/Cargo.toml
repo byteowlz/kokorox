@@ -20,7 +20,7 @@ kokorox-openai = { path = "../kokorox-openai" }
 kokorox-websocket = { path = "../kokorox-websocket" }
 
 clap = { version = "4.5.26", features = ["derive"] }
-tokio = { version = "1.0", features = ["io-util", "rt-multi-thread"] }
+tokio = { version = "1.0", features = ["io-util", "io-std", "rt-multi-thread"] }
 sentence_segmentation = "1.2.0"
 rodio = "0.20.1"
 ctrlc = "3.4.1"

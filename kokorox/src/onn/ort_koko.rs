@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use parking_lot::Mutex;
+use std::borrow::Cow;
 
 use ndarray::{ArrayBase, IxDyn, OwnedRepr};
 use ort::{

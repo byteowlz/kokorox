@@ -87,11 +87,7 @@ enum Mode {
 
         /// Path to output the WAV file to on the filesystem
         /// Default: {output_dir}/output.wav (from config)
-        #[arg(
-            short = 'o',
-            long = "output",
-            value_name = "OUTPUT_PATH"
-        )]
+        #[arg(short = 'o', long = "output", value_name = "OUTPUT_PATH")]
         save_path: Option<String>,
     },
 
@@ -103,11 +99,7 @@ enum Mode {
 
         /// Format for the output path of each WAV file, where {line} will be replaced with the line number
         /// Default: {output_dir}/output_{line}.wav (from config)
-        #[arg(
-            short = 'o',
-            long = "output",
-            value_name = "OUTPUT_PATH_FORMAT"
-        )]
+        #[arg(short = 'o', long = "output", value_name = "OUTPUT_PATH_FORMAT")]
         save_path_format: Option<String>,
     },
 
@@ -119,11 +111,7 @@ enum Mode {
     Pipe {
         /// Output WAV file path
         /// Default: {output_dir}/pipe_output.wav (from config)
-        #[arg(
-            short = 'o',
-            long = "output",
-            value_name = "OUTPUT_PATH"
-        )]
+        #[arg(short = 'o', long = "output", value_name = "OUTPUT_PATH")]
         output_path: Option<String>,
     },
 
@@ -189,46 +177,42 @@ enum Mode {
 #[command(version = "0.1")]
 #[command(author = "Lucas Jin, Tommy Falkowski")]
 #[command(about = "Lightning fast text-to-speech CLI using the Kokoro model")]
-#[command(after_help = "Configuration files are loaded from (highest to lowest priority):
+#[command(
+    after_help = "Configuration files are loaded from (highest to lowest priority):
   1. --config <file>
   2. Environment variables (KOKO_*)
   3. ./config.toml (local)
   4. $XDG_CONFIG_HOME/koko/config.toml (global)
 
 Run 'koko config --paths' to see configuration paths.
-Run 'koko config --init' to create a default config file.")]
+Run 'koko config --init' to create a default config file."
+)]
 struct Cli {
     /// Path to a custom config file (highest priority)
-    #[arg(short = 'c', long = "config", value_name = "CONFIG_FILE", global = true)]
+    #[arg(
+        short = 'c',
+        long = "config",
+        value_name = "CONFIG_FILE",
+        global = true
+    )]
     config_file: Option<String>,
 
     /// A language identifier from
     /// https://github.com/espeak-ng/espeak-ng/blob/master/docs/languages.md
     /// Common values: en-us, en-gb, es, fr, de, zh, ja, pt-pt
-    #[arg(
-        short = 'l',
-        long = "lan",
-        value_name = "LANGUAGE"
-    )]
+    #[arg(short = 'l', long = "lan", value_name = "LANGUAGE")]
     lan: Option<String>,
 
     /// Auto-detect language from input text
     /// When enabled, the system will attempt to detect the language from the input text
-    #[arg(
-        short = 'a',
-        long = "auto-detect",
-        value_name = "AUTO_DETECT"
-    )]
+    #[arg(short = 'a', long = "auto-detect", value_name = "AUTO_DETECT")]
     auto_detect: Option<bool>,
 
     /// Override style selection
     /// When enabled, this will use the specified style (set with -s/--style)
     /// instead of automatically selecting a language-appropriate style.
     /// Without this flag, the system tries to use language-appropriate voices.
-    #[arg(
-        long = "force-style",
-        value_name = "FORCE_STYLE"
-    )]
+    #[arg(long = "force-style", value_name = "FORCE_STYLE")]
     force_style: Option<bool>,
 
     /// Path to the Kokoro v1.0 ONNX model on the filesystem (optional, defaults to HF cache)
@@ -251,11 +235,7 @@ struct Cli {
     chinese: bool,
 
     /// Silent Mode: If set to true, don't play audio when using Pipe  
-    #[arg(
-        short = 'x',
-        long = "silent",
-        value_name = "SILENT"
-    )]
+    #[arg(short = 'x', long = "silent", value_name = "SILENT")]
     silent: bool,
 
     /// Which single voice to use or voices to combine to serve as the style of speech
@@ -268,21 +248,13 @@ struct Cli {
     ///
     /// To blend voices, use format: voice1.weight+voice2.weight
     /// where weight is an integer 0-10 (e.g., af_sarah.4+af_nicole.6 = 40% + 60%)
-    #[arg(
-        short = 's',
-        long = "style",
-        value_name = "STYLE"
-    )]
+    #[arg(short = 's', long = "style", value_name = "STYLE")]
     style: Option<String>,
 
     /// Rate of speech, as a coefficient of the default
     /// (i.e. 0.0 to 1.0 is slower than default,
     /// whereas 1.0 and beyond is faster than default)
-    #[arg(
-        short = 'p',
-        long = "speed",
-        value_name = "SPEED"
-    )]
+    #[arg(short = 'p', long = "speed", value_name = "SPEED")]
     speed: Option<f32>,
 
     /// Output audio in mono (as opposed to stereo)
@@ -374,23 +346,31 @@ impl ResolvedConfig {
 
     /// Get the output path for text mode
     fn text_output_path(&self, cli_path: &Option<String>, config: &AppConfig) -> String {
-        cli_path.clone().unwrap_or_else(|| config.output_path("output.wav"))
+        cli_path
+            .clone()
+            .unwrap_or_else(|| config.output_path("output.wav"))
     }
 
     /// Get the output path format for file mode
     fn file_output_path_format(&self, cli_path: &Option<String>, config: &AppConfig) -> String {
-        cli_path.clone().unwrap_or_else(|| config.output_path("output_{line}.wav"))
+        cli_path
+            .clone()
+            .unwrap_or_else(|| config.output_path("output_{line}.wav"))
     }
 
     /// Get the output path for pipe mode
     fn pipe_output_path(&self, cli_path: &Option<String>, config: &AppConfig) -> String {
-        cli_path.clone().unwrap_or_else(|| config.output_path("pipe_output.wav"))
+        cli_path
+            .clone()
+            .unwrap_or_else(|| config.output_path("pipe_output.wav"))
     }
 
     /// Get the server IP address
     fn get_server_ip(&self, cli_ip: &Option<IpAddr>) -> IpAddr {
         cli_ip.unwrap_or_else(|| {
-            self.server_ip.parse().unwrap_or_else(|_| [0, 0, 0, 0].into())
+            self.server_ip
+                .parse()
+                .unwrap_or_else(|_| [0, 0, 0, 0].into())
         })
     }
 }
@@ -972,18 +952,18 @@ fn ensure_parent_dir_exists(file_path: &str) -> io::Result<()> {
 #[cfg(target_os = "linux")]
 fn init_espeak_data_dir() {
     const ENV_VAR: &str = "PIPER_ESPEAKNG_DATA_DIRECTORY";
-    
+
     // Skip if already set
     if std::env::var(ENV_VAR).is_ok() {
         return;
     }
-    
+
     // Common Linux system paths where espeak-ng-data is installed
     let system_paths = [
         "/usr/share",       // Most distros (Arch, Debian, Ubuntu, Fedora, etc.)
         "/usr/local/share", // Local installations
     ];
-    
+
     for path in system_paths {
         let data_dir = std::path::Path::new(path).join("espeak-ng-data");
         if data_dir.exists() && data_dir.join("phontab").exists() {
@@ -1001,7 +981,7 @@ fn init_espeak_data_dir() {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize espeak-ng data directory before anything else
     init_espeak_data_dir();
-    
+
     // The segmentation fault seems to be related to ONNX runtime cleanup
     // We'll use a different approach to clean up
 
@@ -1105,6 +1085,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let phonemes = resolved.phonemes;
         let silent = resolved.silent;
         let mode = cli.mode.clone();
+
+        // Initialize ONNX Runtime (required for CUDA with load-dynamic)
+        if let Err(e) = kokorox::onn::init_ort(None) {
+            eprintln!("Failed to initialize ONNX Runtime: {}", e);
+            std::process::exit(1);
+        }
 
         // Determine model variant based on language
         // Priority: --chinese flag > explicit -l zh > auto-detect from text
