@@ -1976,7 +1976,7 @@ dependencies = [
 
 [[package]]
 name = "koko"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "clap",
  "config",
@@ -1995,7 +1995,7 @@ dependencies = [
 
 [[package]]
 name = "kokorox"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "chinese-number",
  "dirs",
@@ -2023,7 +2023,7 @@ dependencies = [
 
 [[package]]
 name = "kokorox-openai"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "axum",
  "kokorox",
@@ -2033,7 +2033,7 @@ dependencies = [
 
 [[package]]
 name = "kokorox-websocket"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "base64 0.21.7",
  "futures-util",
