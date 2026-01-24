@@ -16,6 +16,24 @@ struct ClientCommand {
     /// If true, auto-detect language and switch models accordingly
     #[serde(default)]
     auto_detect: bool,
+    /// Stream ID for streaming mode (stream_start/stream_append/stream_end)
+    stream_id: Option<String>,
+}
+
+/// State for an active streaming session
+struct StreamSession {
+    /// Buffered text waiting for a sentence boundary
+    buffer: String,
+    /// Number of audio chunks sent so far
+    chunk_count: usize,
+    /// Voice to use for this stream
+    voice: String,
+    /// Language for this stream
+    language: String,
+    /// Speed for this stream
+    speed: f32,
+    /// Auto-detect language
+    auto_detect: bool,
 }
 
 #[derive(Serialize)]
@@ -49,6 +67,8 @@ async fn handle_connection(stream: TcpStream, manager: TTSManager) {
         let mut current_language = "en-us".to_string();
         let mut current_speed = 1.0f32;
         let mut auto_detect = false;
+        // Active streaming sessions (stream_id -> session state)
+        let mut streams: std::collections::HashMap<String, StreamSession> = std::collections::HashMap::new();
         let (mut write, mut read) = ws_stream.split();
 
         while let Some(Ok(msg)) = read.next().await {
@@ -170,6 +190,107 @@ async fn handle_connection(stream: TcpStream, manager: TTSManager) {
                                 }
                             }
                         }
+                        
+                        // Streaming mode: start a new stream session
+                        "stream_start" => {
+                            let stream_id = cmd.stream_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+                            let session = StreamSession {
+                                buffer: String::new(),
+                                chunk_count: 0,
+                                voice: cmd.voice.unwrap_or_else(|| current_voice.clone()),
+                                language: cmd.language.unwrap_or_else(|| current_language.clone()),
+                                speed: cmd.speed.unwrap_or(current_speed),
+                                auto_detect: cmd.auto_detect || auto_detect,
+                            };
+                            streams.insert(stream_id.clone(), session);
+                            
+                            #[derive(Serialize)]
+                            struct StreamStarted<'a> {
+                                #[serde(rename = "type")]
+                                msg_type: &'a str,
+                                stream_id: &'a str,
+                            }
+                            let reply = StreamStarted {
+                                msg_type: "stream_started",
+                                stream_id: &stream_id,
+                            };
+                            let _ = write.send(Message::Text(serde_json::to_string(&reply).unwrap())).await;
+                        }
+                        
+                        // Streaming mode: append text to stream, synthesize complete sentences
+                        "stream_append" => {
+                            if let (Some(stream_id), Some(text)) = (cmd.stream_id.as_ref(), cmd.text.as_ref()) {
+                                if let Some(session) = streams.get_mut(stream_id) {
+                                    session.buffer.push_str(text);
+                                    
+                                    // Extract and synthesize complete sentences
+                                    let result = synthesize_stream_buffer(
+                                        &manager,
+                                        session,
+                                        stream_id,
+                                        false, // don't flush incomplete
+                                        &mut write,
+                                    ).await;
+                                    
+                                    if let Err(e) = result {
+                                        eprintln!("Stream synthesis error: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Streaming mode: end stream, flush remaining buffer
+                        "stream_end" => {
+                            if let Some(stream_id) = cmd.stream_id.as_ref() {
+                                if let Some(mut session) = streams.remove(stream_id) {
+                                    // Flush any remaining text
+                                    let result = synthesize_stream_buffer(
+                                        &manager,
+                                        &mut session,
+                                        stream_id,
+                                        true, // flush incomplete
+                                        &mut write,
+                                    ).await;
+                                    
+                                    if let Err(e) = result {
+                                        eprintln!("Stream flush error: {}", e);
+                                    }
+                                    
+                                    #[derive(Serialize)]
+                                    struct StreamEnded<'a> {
+                                        #[serde(rename = "type")]
+                                        msg_type: &'a str,
+                                        stream_id: &'a str,
+                                        total_chunks: usize,
+                                    }
+                                    let reply = StreamEnded {
+                                        msg_type: "stream_ended",
+                                        stream_id,
+                                        total_chunks: session.chunk_count,
+                                    };
+                                    let _ = write.send(Message::Text(serde_json::to_string(&reply).unwrap())).await;
+                                }
+                            }
+                        }
+                        
+                        // Streaming mode: cancel/abort a stream
+                        "stream_cancel" => {
+                            if let Some(stream_id) = cmd.stream_id.as_ref() {
+                                streams.remove(stream_id);
+                                #[derive(Serialize)]
+                                struct StreamCancelled<'a> {
+                                    #[serde(rename = "type")]
+                                    msg_type: &'a str,
+                                    stream_id: &'a str,
+                                }
+                                let reply = StreamCancelled {
+                                    msg_type: "stream_cancelled",
+                                    stream_id,
+                                };
+                                let _ = write.send(Message::Text(serde_json::to_string(&reply).unwrap())).await;
+                            }
+                        }
+                        
                         _ => {
                             let reply = SimpleMsg {
                                 msg_type: "error",
@@ -195,6 +316,115 @@ async fn handle_connection(stream: TcpStream, manager: TTSManager) {
             }
         }
     }
+}
+
+/// Synthesize complete sentences from stream buffer, sending audio chunks as they're ready.
+/// If `flush` is true, also synthesize any remaining incomplete text.
+async fn synthesize_stream_buffer(
+    manager: &TTSManager,
+    session: &mut StreamSession,
+    stream_id: &str,
+    flush: bool,
+    write: &mut SplitSink<WebSocketStream<TcpStream>, Message>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use kokorox::tts::segmentation::split_into_sentences;
+    
+    // Find complete sentences in buffer
+    let sentences = split_into_sentences(&session.buffer);
+    
+    if sentences.is_empty() {
+        if flush && !session.buffer.trim().is_empty() {
+            // Flush remaining text even if not a complete sentence
+            let text = std::mem::take(&mut session.buffer);
+            synthesize_and_send_chunk(
+                manager,
+                &text,
+                session,
+                stream_id,
+                write,
+            ).await?;
+        }
+        return Ok(());
+    }
+    
+    // Check if last "sentence" is complete (ends with sentence-ending punctuation)
+    let last = sentences.last().unwrap();
+    let last_is_complete = last.trim().ends_with(|c| matches!(c, '.' | '!' | '?' | ';' | ':' | '\n'));
+    
+    // Synthesize complete sentences
+    let sentences_to_process = if last_is_complete || flush {
+        session.buffer.clear();
+        sentences
+    } else {
+        // Keep last incomplete sentence in buffer
+        session.buffer = sentences.last().unwrap().to_string();
+        sentences[..sentences.len() - 1].to_vec()
+    };
+    
+    for sentence in sentences_to_process {
+        if sentence.trim().is_empty() {
+            continue;
+        }
+        synthesize_and_send_chunk(
+            manager,
+            &sentence,
+            session,
+            stream_id,
+            write,
+        ).await?;
+    }
+    
+    Ok(())
+}
+
+/// Synthesize a single chunk and send it
+async fn synthesize_and_send_chunk(
+    manager: &TTSManager,
+    text: &str,
+    session: &mut StreamSession,
+    stream_id: &str,
+    write: &mut SplitSink<WebSocketStream<TcpStream>, Message>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let audio = manager
+        .tts_raw_audio(
+            text,
+            &session.language,
+            &session.voice,
+            session.speed,
+            None,
+            session.auto_detect,
+            true,
+            false,
+        )
+        .await?;
+    
+    let encoded = encode_audio(&audio);
+    
+    #[derive(Serialize)]
+    struct StreamChunk<'a> {
+        #[serde(rename = "type")]
+        msg_type: &'a str,
+        stream_id: &'a str,
+        chunk: &'a str,
+        index: usize,
+        sample_rate: u32,
+    }
+    
+    let chunk_msg = StreamChunk {
+        msg_type: "stream_chunk",
+        stream_id,
+        chunk: &encoded,
+        index: session.chunk_count,
+        sample_rate: 24000,
+    };
+    
+    session.chunk_count += 1;
+    
+    if let Ok(json) = serde_json::to_string(&chunk_msg) {
+        let _ = write.send(Message::Text(json)).await;
+    }
+    
+    Ok(())
 }
 
 /// Legacy handler for single TTSKoko instance (for backward compatibility)
