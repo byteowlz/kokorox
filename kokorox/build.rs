@@ -25,7 +25,9 @@ fn find_ldconfig_lib(name: &str) -> Option<LibLink> {
         if filename == format!("lib{}.so", name) {
             let path = PathBuf::from(right);
             if let Some(dir) = path.parent() {
-                return Some(LibLink::ByName { dir: dir.to_path_buf() });
+                return Some(LibLink::ByName {
+                    dir: dir.to_path_buf(),
+                });
             }
         }
 

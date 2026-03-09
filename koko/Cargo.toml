@@ -1,6 +1,6 @@
 [package]
 name = "koko"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 repository = "https://github.com/WismutHansen/kokorox.git"
 homepage = "https://github.com/WismutHansen/kokorox"
@@ -27,6 +27,11 @@ ctrlc = "3.4.1"
 regex = "1.10.3"
 config = "0.14"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+base64 = "0.22"
 dirs = "5.0"
 shellexpand = "3.1"
 

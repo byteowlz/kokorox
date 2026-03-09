@@ -15,6 +15,7 @@
 # Environment variables use KOKO_ prefix, e.g.:
 #   KOKO_OUTPUT_DIR=/custom/path
 #   KOKO_LANGUAGE=es
+#   KOKO_PREPROCESSING__URL_MODE=domain
 #   KOKO_SERVER__OPENAI_PORT=8080
 #
 # Paths support ~ and environment variable expansion, e.g.:
@@ -70,6 +71,15 @@ verbose = false
 
 # Enable detailed accent debugging for non-English languages
 debug_accents = false
+
+# Text preprocessing options
+[preprocessing]
+# URL handling mode:
+#   preserve  - keep full URL unchanged
+#   readable  - convert to spoken form with path (e.g., "example dot com, blog, hello world")
+#   domain    - keep domain only in spoken form (e.g., "example dot com")
+#   skip      - remove URLs completely
+url_mode = "preserve"
 
 # Server configuration
 [server]

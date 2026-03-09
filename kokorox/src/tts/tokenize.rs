@@ -37,25 +37,32 @@ pub fn tokenize_with_variant(phonemes: &str, variant: ModelVariant) -> Vec<i64> 
         ModelVariant::English => &*VOCAB,
         ModelVariant::Chinese => &*ZH_VOCAB,
     };
-    
+
     let mut tokens = Vec::new();
     let mut dropped_chars = Vec::new();
-    
+
     for c in phonemes.chars() {
         match vocab.get(&c) {
             Some(&idx) => tokens.push(idx as i64),
             None => {
                 dropped_chars.push(c);
                 // For now, skip unknown characters but log them
-                eprintln!("WARNING: Character '{}' (U+{:04X}) not in vocabulary, skipping", c, c as u32);
+                eprintln!(
+                    "WARNING: Character '{}' (U+{:04X}) not in vocabulary, skipping",
+                    c, c as u32
+                );
             }
         }
     }
-    
+
     if !dropped_chars.is_empty() {
-        eprintln!("TOKENIZE: Dropped {} characters from input: {:?}", dropped_chars.len(), dropped_chars);
+        eprintln!(
+            "TOKENIZE: Dropped {} characters from input: {:?}",
+            dropped_chars.len(),
+            dropped_chars
+        );
     }
-    
+
     tokens
 }
 
@@ -97,7 +104,7 @@ pub fn tokens_to_phonemes_with_variant(tokens: &[i64], variant: ModelVariant) ->
         ModelVariant::English => &*REVERSE_VOCAB,
         ModelVariant::Chinese => &*ZH_REVERSE_VOCAB,
     };
-    
+
     tokens
         .iter()
         .filter_map(|&t| reverse_vocab.get(&(t as usize)))

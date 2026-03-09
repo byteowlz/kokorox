@@ -23,7 +23,7 @@ pub fn get_vocab() -> std::collections::HashMap<char, usize> {
 /// This vocab is based on the tokenizer.json from onnx-community/Kokoro-82M-v1.1-zh-ONNX
 pub fn get_zh_vocab() -> HashMap<char, usize> {
     let mut vocab = HashMap::new();
-    
+
     // Based on tokenizer.json from Kokoro-82M-v1.1-zh-ONNX
     let mappings: &[(&str, usize)] = &[
         ("$", 0),
@@ -116,13 +116,13 @@ pub fn get_zh_vocab() -> HashMap<char, usize> {
         ("ɟ", 90),
         ("ㄑ", 91), // q
         ("ɡ", 92),
-        ("ㄒ", 93), // x
-        ("ㄔ", 94), // ch
-        ("ㄕ", 95), // sh
-        ("ㄗ", 96), // z
-        ("ㄘ", 97), // c
-        ("ㄙ", 98), // s
-        ("月", 99), // ve/ue
+        ("ㄒ", 93),  // x
+        ("ㄔ", 94),  // ch
+        ("ㄕ", 95),  // sh
+        ("ㄗ", 96),  // z
+        ("ㄘ", 97),  // c
+        ("ㄙ", 98),  // s
+        ("月", 99),  // ve/ue
         ("ㄚ", 100), // a
         ("ɨ", 101),
         ("ɪ", 102),
@@ -202,13 +202,13 @@ pub fn get_zh_vocab() -> HashMap<char, usize> {
         ("云", 176), // vn/yun
         ("ᵻ", 177),
     ];
-    
+
     for (s, idx) in mappings {
         for c in s.chars() {
             vocab.insert(c, *idx);
         }
     }
-    
+
     vocab
 }
 
@@ -234,7 +234,7 @@ lazy_static! {
     /// Default vocab for English/multilingual model (v1.0)
     pub static ref VOCAB: HashMap<char, usize> = get_vocab();
     pub static ref REVERSE_VOCAB: HashMap<usize, char> = get_reverse_vocab();
-    
+
     /// Chinese vocab for v1.1-zh model
     pub static ref ZH_VOCAB: HashMap<char, usize> = get_zh_vocab();
     pub static ref ZH_REVERSE_VOCAB: HashMap<usize, char> = get_zh_reverse_vocab();

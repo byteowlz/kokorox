@@ -11,9 +11,9 @@ lazy_static! {
     static ref PHONEME_PATTERNS: Regex = Regex::new(r"(?<=[a-zɹː])(?=hˈʌndɹɪd)").unwrap();
     static ref Z_PATTERN: Regex = Regex::new(r#" z(?=[;:,.!?¡¿—…"«»"" ]|$)"#).unwrap();
     static ref NINETY_PATTERN: Regex = Regex::new(r"(?<=nˈaɪn)ti(?!ː)").unwrap();
-    
+
     static ref JPREPROCESS: Mutex<Option<jpreprocess::JPreprocess<jpreprocess::DefaultTokenizer>>> = Mutex::new(None);
-    
+
     /// Chinese G2P instance
     static ref CHINESE_G2P: Mutex<ChineseG2P> = Mutex::new(ChineseG2P::new());
 
@@ -238,27 +238,27 @@ lazy_static! {
 /// and correctly pronounces particles like は (wa), へ (e), and を (o).
 pub fn japanese_text_to_phonemes(text: &str) -> Result<String, Box<dyn std::error::Error>> {
     let mut jpreprocess_guard = JPREPROCESS.lock().unwrap();
-    
+
     if jpreprocess_guard.is_none() {
         let config = jpreprocess::JPreprocessConfig {
             dictionary: jpreprocess::SystemDictionaryConfig::Bundled(
-                jpreprocess::kind::JPreprocessDictionaryKind::NaistJdic
+                jpreprocess::kind::JPreprocessDictionaryKind::NaistJdic,
             ),
             user_dictionary: None,
         };
         *jpreprocess_guard = Some(jpreprocess::JPreprocess::from_config(config)?);
     }
-    
+
     let jpreprocess_instance = jpreprocess_guard.as_ref().unwrap();
-    
+
     let labels = jpreprocess_instance.extract_fullcontext(text)?;
-    
+
     let mut phonemes = Vec::new();
     let mut prev_word_boundary = false;
-    
+
     for label in labels {
         let label_str = label.to_string();
-        
+
         // Check if this is an accent phrase boundary by looking at the J field
         // Format: .../J:x_y/...
         // When x (mora position in accent phrase) is 1, it's the start of a new phrase
@@ -271,7 +271,7 @@ pub fn japanese_text_to_phonemes(text: &str) -> Result<String, Box<dyn std::erro
         } else {
             false
         };
-        
+
         if let Some(phoneme_part) = label_str.split('-').nth(1) {
             let phoneme = phoneme_part.split('+').next().unwrap_or("");
             if !phoneme.is_empty() && phoneme != "sil" {
@@ -281,13 +281,13 @@ pub fn japanese_text_to_phonemes(text: &str) -> Result<String, Box<dyn std::erro
                     prev_word_boundary = true;
                     continue;
                 }
-                
+
                 // Add space before accent phrase boundaries (except at start and after pau)
                 if is_phrase_start && !phonemes.is_empty() && !prev_word_boundary {
                     phonemes.push(" ".to_string());
                 }
                 prev_word_boundary = false;
-                
+
                 // Convert to lowercase to remove pitch accent markers
                 // Map Japanese romaji phonemes to IPA
                 let phoneme_lower = phoneme.to_lowercase();
@@ -335,7 +335,7 @@ pub fn japanese_text_to_phonemes(text: &str) -> Result<String, Box<dyn std::erro
             }
         }
     }
-    
+
     Ok(phonemes.join(""))
 }
 

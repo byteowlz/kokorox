@@ -97,7 +97,10 @@ pub async fn create_server_with_manager(manager: TTSManager) -> Router {
         .route("/", get(handle_home))
         .route("/v1/audio/speech", post(handle_tts_with_manager))
         .route("/v1/audio/voices", get(get_voices_with_manager))
-        .route("/v1/audio/voices/detailed", get(get_voices_detailed_with_manager))
+        .route(
+            "/v1/audio/voices/detailed",
+            get(get_voices_detailed_with_manager),
+        )
         .layer(CorsLayer::permissive())
         .with_state(Arc::new(manager))
 }
@@ -297,7 +300,7 @@ async fn handle_tts(
             initial_silence,
             auto_detect_language,
             force_style,
-            false,  // phonemes mode not supported for OpenAI API
+            false, // phonemes mode not supported for OpenAI API
         )
         .map_err(SpeechError::Koko)?;
 
@@ -336,7 +339,9 @@ async fn get_voices_with_manager(State(manager): State<Arc<TTSManager>>) -> Json
     Json(VoicesResponse { voices })
 }
 
-async fn get_voices_detailed_with_manager(State(manager): State<Arc<TTSManager>>) -> Json<VoicesDetailedResponse> {
+async fn get_voices_detailed_with_manager(
+    State(manager): State<Arc<TTSManager>>,
+) -> Json<VoicesDetailedResponse> {
     let voice_styles = manager.get_available_voices().await;
 
     let mut voices = Vec::new();
@@ -401,7 +406,7 @@ async fn handle_tts_with_manager(
             initial_silence,
             auto_detect_language,
             force_style,
-            false,  // phonemes mode not supported for OpenAI API
+            false, // phonemes mode not supported for OpenAI API
         )
         .await
         .map_err(|e| SpeechError::Koko(e))?;

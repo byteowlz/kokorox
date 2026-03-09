@@ -35,6 +35,9 @@ pub struct AppConfig {
     /// Default speech speed
     pub speed: f32,
 
+    /// Text preprocessing options
+    pub preprocessing: PreprocessingConfig,
+
     /// Auto-detect language from input text
     pub auto_detect: bool,
 
@@ -66,6 +69,14 @@ pub struct AppConfig {
     pub server: ServerConfig,
 }
 
+/// Text preprocessing options
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct PreprocessingConfig {
+    /// URL handling mode: preserve, readable, domain, skip
+    pub url_mode: String,
+}
+
 /// Server-specific configuration
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
@@ -87,6 +98,7 @@ impl Default for AppConfig {
             language: "en-us".to_string(),
             style: "af_heart".to_string(),
             speed: 1.0,
+            preprocessing: PreprocessingConfig::default(),
             auto_detect: false,
             force_style: false,
             mono: false,
@@ -97,6 +109,14 @@ impl Default for AppConfig {
             verbose: false,
             debug_accents: false,
             server: ServerConfig::default(),
+        }
+    }
+}
+
+impl Default for PreprocessingConfig {
+    fn default() -> Self {
+        Self {
+            url_mode: "preserve".to_string(),
         }
     }
 }

@@ -67,12 +67,12 @@ lazy_static! {
         let s = "、：，；。？！\"\"''':,;.?!";
         s.chars().collect()
     };
-    
+
     /// Sentence-final particles that get neutral tone
     static ref FINAL_PARTICLES: HashSet<char> = {
         "吧呢啊呐噻嘛吖嗨呐哦哒滴哩哟喽啰耶喔诶".chars().collect()
     };
-    
+
     /// "De" particles that get neutral tone
     static ref DE_PARTICLES: HashSet<char> = {
         "的地得".chars().collect()
@@ -84,18 +84,21 @@ fn apply_neural_sandhi(word: &str, pos: &str, finals: &mut Vec<String>) {
     if MUST_NOT_NEURAL_TONE_WORDS.contains(word) {
         return;
     }
-    
+
     let chars: Vec<char> = word.chars().collect();
-    
+
     // Reduplication: e.g. 奶奶, 试试
     for (j, ch) in chars.iter().enumerate() {
-        if j > 0 && *ch == chars[j - 1] && (pos.starts_with('n') || pos.starts_with('v') || pos.starts_with('a')) {
+        if j > 0
+            && *ch == chars[j - 1]
+            && (pos.starts_with('n') || pos.starts_with('v') || pos.starts_with('a'))
+        {
             if let Some(f) = finals.get_mut(j) {
                 *f = set_tone(f, 5);
             }
         }
     }
-    
+
     // Sentence-final particles
     if !chars.is_empty() {
         let last_char = chars[chars.len() - 1];
@@ -105,28 +108,29 @@ fn apply_neural_sandhi(word: &str, pos: &str, finals: &mut Vec<String>) {
             }
         }
     }
-    
+
     // 了着过 as aspect markers
     if chars.len() == 1 && "了着过".contains(chars[0]) && ["ul", "uz", "ug"].contains(&pos) {
         if let Some(f) = finals.last_mut() {
             *f = set_tone(f, 5);
         }
     }
-    
+
     // 们子 suffix
     if chars.len() > 1 && "们子".contains(chars[chars.len() - 1]) && (pos == "r" || pos == "n") {
         if let Some(f) = finals.last_mut() {
             *f = set_tone(f, 5);
         }
     }
-    
+
     // 上下 as location suffix
-    if chars.len() > 1 && "上下".contains(chars[chars.len() - 1]) && ["s", "l", "f"].contains(&pos) {
+    if chars.len() > 1 && "上下".contains(chars[chars.len() - 1]) && ["s", "l", "f"].contains(&pos)
+    {
         if let Some(f) = finals.last_mut() {
             *f = set_tone(f, 5);
         }
     }
-    
+
     // 来去 as directional complement
     if chars.len() > 1 && "来去".contains(chars[chars.len() - 1]) {
         if chars.len() >= 2 && "上下进出回过起开".contains(chars[chars.len() - 2]) {
@@ -135,7 +139,7 @@ fn apply_neural_sandhi(word: &str, pos: &str, finals: &mut Vec<String>) {
             }
         }
     }
-    
+
     // 个 as measure word
     if let Some(ge_idx) = word.find('个') {
         let ge_char_idx = word[..ge_idx].chars().count();
@@ -152,17 +156,17 @@ fn apply_neural_sandhi(word: &str, pos: &str, finals: &mut Vec<String>) {
             }
         }
     }
-    
+
     // Must neural tone words
     if MUST_NEURAL_TONE_WORDS.contains(word) {
         if let Some(f) = finals.last_mut() {
             *f = set_tone(f, 5);
         }
     }
-    
+
     // Check last two chars
     if chars.len() >= 2 {
-        let last_two: String = chars[chars.len()-2..].iter().collect();
+        let last_two: String = chars[chars.len() - 2..].iter().collect();
         if MUST_NEURAL_TONE_WORDS.contains(last_two.as_str()) {
             if let Some(f) = finals.last_mut() {
                 *f = set_tone(f, 5);
@@ -174,7 +178,7 @@ fn apply_neural_sandhi(word: &str, pos: &str, finals: &mut Vec<String>) {
 /// Apply 不 (bu) sandhi
 fn apply_bu_sandhi(word: &str, finals: &mut Vec<String>) {
     let chars: Vec<char> = word.chars().collect();
-    
+
     // 看不懂 pattern - bu becomes neutral
     if chars.len() == 3 && chars[1] == '不' {
         if let Some(f) = finals.get_mut(1) {
@@ -199,13 +203,13 @@ fn apply_bu_sandhi(word: &str, finals: &mut Vec<String>) {
 /// Apply 一 (yi) sandhi  
 fn apply_yi_sandhi(word: &str, finals: &mut Vec<String>) {
     let chars: Vec<char> = word.chars().collect();
-    
+
     // Check if it's a number sequence (一零零)
     let all_numeric = chars.iter().all(|c| c.is_ascii_digit() || *c == '一');
     if word.contains('一') && all_numeric {
-        return;  // Keep original tone in number sequences
+        return; // Keep original tone in number sequences
     }
-    
+
     // 看一看 pattern - yi becomes neutral
     if chars.len() == 3 && chars[1] == '一' && chars[0] == chars[2] {
         if let Some(f) = finals.get_mut(1) {
@@ -213,12 +217,12 @@ fn apply_yi_sandhi(word: &str, finals: &mut Vec<String>) {
         }
         return;
     }
-    
+
     // 第一 - yi stays tone 1 (ordinal)
     if word.starts_with("第一") {
         return;
     }
-    
+
     // Apply yi sandhi rules
     for (i, ch) in chars.iter().enumerate() {
         if *ch == '一' && i + 1 < chars.len() {
@@ -243,10 +247,10 @@ fn apply_yi_sandhi(word: &str, finals: &mut Vec<String>) {
 /// Apply third tone sandhi (two consecutive third tones)
 fn apply_three_sandhi(word: &str, finals: &mut Vec<String>) {
     let chars: Vec<char> = word.chars().collect();
-    
+
     // Check if all tones are third tone
     let all_third = finals.iter().all(|f| get_tone(f) == 3);
-    
+
     match chars.len() {
         2 if all_third => {
             // Two consecutive third tones: first becomes second
@@ -288,7 +292,8 @@ fn apply_three_sandhi(word: &str, finals: &mut Vec<String>) {
 
 /// Get tone number from pinyin final (e.g., "ang1" -> 1)
 fn get_tone(final_str: &str) -> u8 {
-    final_str.chars()
+    final_str
+        .chars()
         .last()
         .and_then(|c| c.to_digit(10))
         .map(|d| d as u8)
@@ -304,12 +309,12 @@ fn set_tone(final_str: &str, tone: u8) -> String {
 /// Apply all tone sandhi rules
 pub fn apply_tone_sandhi(word: &str, pos: &str, pinyins: &[String]) -> Vec<String> {
     let mut finals: Vec<String> = pinyins.to_vec();
-    
+
     apply_bu_sandhi(word, &mut finals);
     apply_yi_sandhi(word, &mut finals);
     apply_neural_sandhi(word, pos, &mut finals);
     apply_three_sandhi(word, &mut finals);
-    
+
     finals
 }
 
@@ -318,13 +323,13 @@ pub fn apply_tone_sandhi(word: &str, pos: &str, pinyins: &[String]) -> Vec<Strin
 pub fn pre_merge_for_modify(words_with_pos: &[(String, String)]) -> Vec<(String, String)> {
     let mut result: Vec<(String, String)> = Vec::new();
     let mut skip_next = false;
-    
+
     for (i, (word, pos)) in words_with_pos.iter().enumerate() {
         if skip_next {
             skip_next = false;
             continue;
         }
-        
+
         // Merge 不 with following word
         if word == "不" && i + 1 < words_with_pos.len() {
             let (next_word, next_pos) = &words_with_pos[i + 1];
@@ -334,7 +339,7 @@ pub fn pre_merge_for_modify(words_with_pos: &[(String, String)]) -> Vec<(String,
                 continue;
             }
         }
-        
+
         // Merge 一 with following word
         if word == "一" && i + 1 < words_with_pos.len() {
             let (next_word, next_pos) = &words_with_pos[i + 1];
@@ -344,7 +349,7 @@ pub fn pre_merge_for_modify(words_with_pos: &[(String, String)]) -> Vec<(String,
                 continue;
             }
         }
-        
+
         // Merge 儿 suffix
         if word == "儿" && !result.is_empty() {
             if let Some(last) = result.last_mut() {
@@ -354,7 +359,7 @@ pub fn pre_merge_for_modify(words_with_pos: &[(String, String)]) -> Vec<(String,
                 }
             }
         }
-        
+
         // Merge reduplication (e.g., 看 看 -> 看看)
         if !result.is_empty() {
             if let Some(last) = result.last_mut() {
@@ -364,38 +369,38 @@ pub fn pre_merge_for_modify(words_with_pos: &[(String, String)]) -> Vec<(String,
                 }
             }
         }
-        
+
         result.push((word.clone(), pos.clone()));
     }
-    
+
     result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_bu_sandhi() {
         let mut finals = vec!["bu4".to_string(), "shi4".to_string()];
         apply_bu_sandhi("不是", &mut finals);
-        assert_eq!(get_tone(&finals[0]), 2);  // bu before tone 4 -> tone 2
+        assert_eq!(get_tone(&finals[0]), 2); // bu before tone 4 -> tone 2
     }
-    
+
     #[test]
     fn test_yi_sandhi() {
         let mut finals = vec!["yi1".to_string(), "ge4".to_string()];
         apply_yi_sandhi("一个", &mut finals);
-        assert_eq!(get_tone(&finals[0]), 2);  // yi before tone 4 -> tone 2
+        assert_eq!(get_tone(&finals[0]), 2); // yi before tone 4 -> tone 2
     }
-    
+
     #[test]
     fn test_three_sandhi() {
         let mut finals = vec!["ni3".to_string(), "hao3".to_string()];
         apply_three_sandhi("你好", &mut finals);
-        assert_eq!(get_tone(&finals[0]), 2);  // First of two tone 3 -> tone 2
+        assert_eq!(get_tone(&finals[0]), 2); // First of two tone 3 -> tone 2
     }
-    
+
     #[test]
     fn test_get_set_tone() {
         assert_eq!(get_tone("ang1"), 1);

@@ -1,0 +1,29 @@
+{
+  "todos": [
+    {
+      "id": "1",
+      "content": "Understand current `file` subcommand implementation",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "id": "2",
+      "content": "Add --merge flag to read entire file as one text block and produce single WAV",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "id": "3",
+      "content": "Build and test",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "id": "4",
+      "content": "Update README",
+      "status": "completed",
+      "priority": "medium"
+    }
+  ],
+  "updated_at": "2026-03-09T11:45:54.348Z"
+}

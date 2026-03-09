@@ -70,6 +70,7 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ```bash
 koko text "Hello, world!" -o greeting.wav
 koko file poem.txt                          # One wav per line
+koko file poem.txt --merge -o poem.wav      # Entire file as single wav
 ```
 
 ### Multi-language
@@ -94,6 +95,17 @@ koko text "Hello" --style af_sky.4+af_nicole.5  # Mix styles
 ```bash
 ollama run llama3 "Tell me a story" | koko pipe
 ollama run llama3 "Explain physics" | koko pipe --silent -o output.wav
+
+# Use an already running OpenAI-compatible server
+ollama run llama3 "Tell me a story" | koko pipe --backend openai --server-url http://127.0.0.1:3000
+
+# Use an already running WebSocket server
+ollama run llama3 "Tell me a story" | koko pipe --backend websocket --server-url ws://127.0.0.1:8766
+
+# Configure URL preprocessing for spoken output
+koko text "Read https://openshovelshack.com/blog/the-octopus-and-the-rake" --url-mode readable
+koko text "Read https://openshovelshack.com/blog/the-octopus-and-the-rake" --url-mode domain
+koko text "Read https://openshovelshack.com/blog/the-octopus-and-the-rake" --url-mode skip
 ```
 
 ### OpenAI-Compatible Server

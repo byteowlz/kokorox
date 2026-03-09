@@ -1,0 +1,35 @@
+{
+  "todos": [
+    {
+      "id": "8199b18b",
+      "content": "Inspect current preprocessing/config setup (URL handling + pipeline entry points)",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "id": "b83359f0",
+      "content": "Design configurable preprocessing model and CLI/config options",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "id": "dec6069b",
+      "content": "Implement URL preprocessing modes and wire into pipe/stream flow",
+      "status": "in_progress",
+      "priority": "high"
+    },
+    {
+      "id": "c77ba49f",
+      "content": "Update docs and project notes",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": "0b7f30bb",
+      "content": "Run cargo check and fix issues",
+      "status": "pending",
+      "priority": "high"
+    }
+  ],
+  "updated_at": "2026-03-09T11:37:54.080Z"
+}
