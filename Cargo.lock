@@ -1085,6 +1085,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "filedescriptor"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e40758ed24c9b2eeb76c35fb0aebc66c626084edd827e07e1552279814c6682d"
+dependencies = [
+ "libc",
+ "thiserror 1.0.69",
+ "winapi",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2059,6 +2070,16 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.21.0",
  "uuid",
+]
+
+[[package]]
+name = "kokorox-worker"
+version = "0.2.3"
+dependencies = [
+ "clap",
+ "filedescriptor",
+ "kokorox",
+ "tokio",
 ]
 
 [[package]]

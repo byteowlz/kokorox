@@ -766,6 +766,39 @@ impl TTSKoko {
         force_style: bool,
         phonemes: bool,
     ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        let mut audio = Vec::new();
+        self.tts_stream_audio(
+            txt,
+            lan,
+            style_name,
+            speed,
+            initial_silence,
+            auto_detect_language,
+            force_style,
+            phonemes,
+            &mut |chunk| {
+                audio.extend_from_slice(chunk);
+                true
+            },
+        )?;
+        Ok(audio)
+    }
+
+    /// Emit each completed inference chunk without buffering the entire utterance.
+    /// Return `false` from `emit` to stop between chunks. A running ONNX call is
+    /// not preempted; callers must fence canceled audio in their callback.
+    pub fn tts_stream_audio(
+        &self,
+        txt: &str,
+        lan: &str,
+        style_name: &str,
+        speed: f32,
+        initial_silence: Option<usize>,
+        auto_detect_language: bool,
+        force_style: bool,
+        phonemes: bool,
+        emit: &mut dyn FnMut(&[f32]) -> bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let cleaned_text = if phonemes {
             None
         } else {
@@ -782,8 +815,6 @@ impl TTSKoko {
         } else {
             self.split_text_into_chunks(text_for_tts, 500) // leave ~12 tokens margin
         };
-        let mut final_audio = Vec::new();
-
         // Determine language to use
         let language = if auto_detect_language {
             // Only detect language when auto-detect flag is enabled
@@ -1177,7 +1208,9 @@ impl TTSKoko {
             match self.model.infer(tokens, styles.clone(), speed) {
                 Ok(chunk_audio) => {
                     let chunk_audio: Vec<f32> = chunk_audio.iter().cloned().collect();
-                    final_audio.extend_from_slice(&chunk_audio);
+                    if !emit(&chunk_audio) {
+                        return Ok(());
+                    }
                 }
                 Err(e) => {
                     eprintln!("Error processing chunk: {:?}", e);
@@ -1190,7 +1223,7 @@ impl TTSKoko {
             }
         }
 
-        Ok(final_audio)
+        Ok(())
     }
 
     pub fn tts(

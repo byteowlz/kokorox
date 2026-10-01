@@ -33,6 +33,18 @@ test:
 test-cargo:
     cargo test
 
+# Build the persistent spqx-compatible worker
+worker-build:
+    cargo build --release -p kokorox-worker
+
+# Worker framing/lifecycle and black-box startup tests (no model downloads)
+worker-test:
+    cargo test -p kokorox-worker
+
+# Real-model test; supply KOKOROX_TEST_MODEL / KOKOROX_TEST_VOICES
+worker-test-model:
+    cargo test -p kokorox-worker --test stdio real_worker -- --ignored
+
 # === Lint & Format ===
 
 # Run clippy linter

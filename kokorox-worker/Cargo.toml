@@ -1,0 +1,22 @@
+[package]
+name = "kokorox-worker"
+version = "0.2.3"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "Persistent Kokoro worker compatible with the spqx stdio protocol"
+
+[[bin]]
+name = "kokorox-tts-worker"
+path = "src/main.rs"
+
+[dependencies]
+kokorox = { path = "../kokorox" }
+clap = { version = "4.5.26", features = ["derive"] }
+filedescriptor = "0.8.3"
+tokio = { version = "1.0", features = ["rt"] }
+
+[features]
+default = []
+cuda = ["kokorox/cuda"]
+coreml = ["kokorox/coreml"]

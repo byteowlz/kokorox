@@ -12,12 +12,18 @@ use ort_base::OrtBase;
 
 pub struct OrtKoko {
     sess: Option<Mutex<Session>>,
+    token_input_name: Option<String>,
 }
 
 unsafe impl Send for OrtKoko {}
 unsafe impl Sync for OrtKoko {}
 impl ort_base::OrtBase for OrtKoko {
     fn set_sess(&mut self, sess: Session) {
+        self.token_input_name = sess
+            .inputs()
+            .iter()
+            .find(|input| matches!(input.name(), "input_ids" | "tokens"))
+            .map(|input| input.name().to_owned());
         self.sess = Some(Mutex::new(sess));
     }
 
@@ -29,7 +35,10 @@ impl ort_base::OrtBase for OrtKoko {
 }
 impl OrtKoko {
     pub fn new(model_path: String) -> Result<Self, String> {
-        let mut instance = OrtKoko { sess: None };
+        let mut instance = OrtKoko {
+            sess: None,
+            token_input_name: None,
+        };
         instance.load_model(model_path)?;
         Ok(instance)
     }
@@ -69,7 +78,14 @@ impl OrtKoko {
         let speed_value: SessionInputValue = SessionInputValue::Owned(Value::from(speed));
 
         let inputs: Vec<(Cow<str>, SessionInputValue)> = vec![
-            (Cow::Borrowed("input_ids"), tokens_value),
+            (
+                Cow::Borrowed(
+                    self.token_input_name
+                        .as_deref()
+                        .ok_or("Unsupported Kokoro export: expected input_ids or tokens input")?,
+                ),
+                tokens_value,
+            ),
             (Cow::Borrowed("style"), style_value),
             (Cow::Borrowed("speed"), speed_value),
         ];

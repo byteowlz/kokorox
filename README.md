@@ -131,6 +131,13 @@ koko stream > output.wav
 # Type text, press Enter. Ctrl+D to exit.
 ```
 
+### Native worker
+
+A separate `kokorox-tts-worker` executable speaks the existing spqx binary
+stdio protocol (raw-text requests, PCM16 audio, cancellation). Build with
+`just worker-build`; see [worker protocol and model checks](kokorox-worker/PROTOCOL.md).
+Foxline backend integration is tracked separately.
+
 ### Docker
 
 ```bash
