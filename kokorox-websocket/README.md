@@ -172,4 +172,4 @@ All audio chunks are:
 
 ## License
 
-Apache-2.0
+Current project declaration: GPL-3.0-only, inherited from the workspace and matching the root `LICENSE`. A permissive transition is under audit; see [licensing transition](../docs/licensing-transition.md).

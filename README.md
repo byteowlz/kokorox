@@ -164,4 +164,8 @@ koko -d data/voices-custom.bin text "Hello" --style en_sarah
 
 ## License
 
-GPL 3.0 due to use of the espeak-rs-sys crate which statically links espeak-ng
+Current project declaration: **GPL-3.0-only**, matching `LICENSE` and all workspace Cargo manifests. The current build includes GPL eSpeak-ng through `espeak-rs-sys`; the Rust wrapper's MIT metadata does not cover that embedded dependency. MP3 support also links LGPL-3.0 LAME.
+
+The target is MIT for code the project can lawfully license that way, with inherited third-party notices retained. Replacing eSpeak is necessary for the intended permissive browser engine, but is not by itself source-provenance or distribution clearance. See [the transition audit](docs/licensing-transition.md) (`kokorox-8j45`). No MIT/WASM release is claimed yet.
+
+Run `just license-metadata-check` and `just license-metadata-test` to detect root/member license drift; these are consistency checks, not a full dependency audit.

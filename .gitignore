@@ -7,7 +7,9 @@ venv/
 .vscode/
 checkpoints/*
 data/*
-docs/
+# Keep generated/other documentation ignored; track the licensing audit only.
+docs/*
+!docs/licensing-transition.md
 
 scripts/checkpoints/*
 .pi/todos/

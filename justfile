@@ -41,6 +41,14 @@ worker-build:
 worker-test:
     cargo test -p kokorox-worker
 
+# Check current root/member metadata agreement (not a full license audit).
+license-metadata-check:
+    bash scripts/check-license-metadata.sh
+
+# Positive and negative metadata policy fixtures.
+license-metadata-test:
+    bash scripts/test-license-metadata.sh
+
 # Real-model test; supply KOKOROX_TEST_MODEL / KOKOROX_TEST_VOICES
 worker-test-model:
     cargo test -p kokorox-worker --test stdio real_worker -- --ignored

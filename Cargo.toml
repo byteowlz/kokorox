@@ -2,6 +2,9 @@
 members = ["koko", "kokorox", "kokorox-openai", "kokorox-websocket", "kokorox-worker"]
 resolver = "2"
 
+[workspace.package]
+license = "GPL-3.0-only"
+
 # Configuration for cargo-release
 [workspace.metadata.release]
 # Use the same version across all workspace members
